@@ -64,11 +64,13 @@ function initTables(db: Database.Database) {
 }
 
 function seedData(db: Database.Database) {
-  // Seed admin if not exists
-  const adminExists = db.prepare('SELECT id FROM admin_users WHERE username = ?').get('admin');
+  // Ensure only the owner admin account exists
+  const adminExists = db.prepare('SELECT id FROM admin_users WHERE username = ?').get('Klinti');
   if (!adminExists) {
-    const hash = hashSync('2kvault2026', 10);
-    db.prepare('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)').run('admin', hash);
+    // Remove any old admin accounts and create the owner account
+    db.prepare('DELETE FROM admin_users').run();
+    const hash = hashSync('Klinti2011', 10);
+    db.prepare('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)').run('Klinti', hash);
   }
 
   // Seed sample listings if table is empty
