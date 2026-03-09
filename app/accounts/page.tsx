@@ -21,7 +21,7 @@ interface Listing {
   created_at: string;
 }
 
-const DISCORD_URL = "https://discord.gg/aZd29qHXd";
+const DISCORD_URL = "https://discord.gg/nuk3NaGrnF";
 
 const TRUST_ITEMS = [
   {

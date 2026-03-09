@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-const DISCORD_URL = "https://discord.gg/aZd29qHXd";
+const DISCORD_URL = "https://discord.gg/nuk3NaGrnF";
 
 /* ── Scroll reveal hook ── */
 function useScrollReveal() {

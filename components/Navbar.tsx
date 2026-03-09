@@ -11,7 +11,7 @@ const NAV_LINKS = [
   { href: "/middleman", label: "Middleman" },
 ];
 
-const DISCORD_URL = "https://discord.gg/aZd29qHXd";
+const DISCORD_URL = "https://discord.gg/nuk3NaGrnF";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);

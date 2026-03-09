@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-const DISCORD_URL = "https://discord.gg/aZd29qHXd";
+const DISCORD_URL = "https://discord.gg/nuk3NaGrnF";
 
 const CONSOLE_OPTIONS = ["PS5", "Xbox Series X/S"];
 
