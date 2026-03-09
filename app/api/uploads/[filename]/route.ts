@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import path from 'path';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'data', 'uploads');
+const OLD_UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 
 const MIME_TYPES: Record<string, string> = {
   '.jpg': 'image/jpeg',
@@ -25,7 +26,11 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid filename' }, { status: 400 });
     }
 
-    const filePath = path.join(UPLOAD_DIR, filename);
+    // Check both new and old upload directories
+    let filePath = path.join(UPLOAD_DIR, filename);
+    if (!existsSync(filePath)) {
+      filePath = path.join(OLD_UPLOAD_DIR, filename);
+    }
 
     if (!existsSync(filePath)) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
