@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllListings, createListing, CreateListingData } from '@/lib/db';
+import { getAllListings, createListing, updateListing, CreateListingData } from '@/lib/db';
+import { verifyToken } from '@/lib/auth';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -89,8 +90,21 @@ export async function POST(request: NextRequest) {
 
     const listing = createListing(data);
 
+    // If admin is authenticated and requested a specific status, apply it immediately
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      const admin = verifyToken(token);
+      if (admin && body.status && body.status !== 'pending') {
+        updateListing(listing.id, { status: body.status, featured: body.featured ?? 0 });
+      }
+    }
+
+    // Re-fetch to get updated status
+    const final = { ...listing, ...(body.status !== 'pending' ? { status: body.status || 'pending' } : {}), image_urls: JSON.parse(listing.image_urls || '[]') };
+
     return NextResponse.json(
-      { ...listing, image_urls: JSON.parse(listing.image_urls || '[]') },
+      final,
       { status: 201, headers: corsHeaders }
     );
   } catch (error) {
