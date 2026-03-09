@@ -315,6 +315,36 @@ export default function Home() {
       </section>
 
       {/* ════════════════════════════════════════
+          SCAM WARNING BANNER
+          ════════════════════════════════════════ */}
+      <section className="relative z-10 px-4 -mt-4 mb-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="relative overflow-hidden rounded-xl border border-red-500/30 bg-red-500/[0.08] backdrop-blur-sm p-5 sm:p-6">
+            <div className="absolute inset-0 bg-gradient-to-r from-red-500/[0.05] to-orange-500/[0.05]" />
+            <div className="relative flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-display text-lg font-bold text-red-400 mb-1">
+                  Never Trade Without a Middleman
+                </h3>
+                <p className="text-sm text-text-secondary leading-relaxed">
+                  <span className="text-red-300 font-semibold">NEVER</span> do a deal without using a middleman from our server.
+                  All trades must go through our verified escrow service to protect both buyers and sellers.
+                  If someone asks you to trade directly — <span className="text-red-300 font-semibold">it&apos;s a scam</span>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
           SECTION 2: REVIEWS CAROUSEL
           ════════════════════════════════════════ */}
       <section ref={reviewsRef} className="relative z-10 py-16 md:py-24 overflow-hidden">
