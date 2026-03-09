@@ -9,11 +9,10 @@ const DISCORD_URL = "https://discord.gg/nuk3NaGrnF";
 const CONSOLE_OPTIONS = ["PS5", "Xbox Series X/S"];
 
 const REP_LEVELS = [
+  "Rookie 1", "Rookie 2", "Rookie 3", "Rookie 4", "Rookie 5",
   "Starter 1", "Starter 2", "Starter 3", "Starter 4", "Starter 5",
-  "All-Star 1", "All-Star 2", "All-Star 3", "All-Star 4", "All-Star 5",
   "Veteran 1", "Veteran 2", "Veteran 3", "Veteran 4", "Veteran 5",
   "Legend 1", "Legend 2", "Legend 3", "Legend 4", "Legend 5",
-  "Superstar 1", "Superstar 2", "Superstar 3",
 ];
 
 /* ── Scroll-animation hook ── */
