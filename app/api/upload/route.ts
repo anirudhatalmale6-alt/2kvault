@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import path from 'path';
+import { uploadImage } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 
 const corsHeaders = {
@@ -9,8 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
-
-const UPLOAD_DIR = path.join(process.cwd(), 'data', 'uploads');
 
 // Allowed image MIME types
 const ALLOWED_TYPES = [
@@ -27,12 +23,6 @@ export async function OPTIONS() {
   return NextResponse.json(null, { headers: corsHeaders });
 }
 
-/**
- * POST /api/upload
- * Handle image upload. Accepts FormData with a 'file' field.
- * Saves to public/uploads/ with a UUID filename.
- * Returns { url: '/uploads/filename.ext' }.
- */
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -45,7 +35,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: `Invalid file type: ${file.type}. Allowed: ${ALLOWED_TYPES.join(', ')}` },
@@ -53,7 +42,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate file size
     if (file.size > MAX_SIZE) {
       return NextResponse.json(
         { error: `File too large. Maximum size is ${MAX_SIZE / (1024 * 1024)}MB.` },
@@ -61,12 +49,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure upload directory exists
-    if (!existsSync(UPLOAD_DIR)) {
-      await mkdir(UPLOAD_DIR, { recursive: true });
-    }
-
-    // Determine file extension from MIME type
     const extMap: Record<string, string> = {
       'image/jpeg': '.jpg',
       'image/png': '.png',
@@ -74,19 +56,15 @@ export async function POST(request: NextRequest) {
       'image/gif': '.gif',
     };
     const ext = extMap[file.type] || '.jpg';
-
-    // Generate unique filename
     const filename = `${uuidv4()}${ext}`;
-    const filePath = path.join(UPLOAD_DIR, filename);
 
-    // Write file to disk
     const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
+    const buffer = Buffer.from(bytes);
 
-    const url = `/api/uploads/${filename}`;
+    const publicUrl = await uploadImage(buffer, filename, file.type);
 
     return NextResponse.json(
-      { url, filename },
+      { url: publicUrl, filename },
       { status: 201, headers: corsHeaders }
     );
   } catch (error) {

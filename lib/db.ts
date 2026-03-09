@@ -1,302 +1,80 @@
-import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { hashSync } from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DB_PATH = path.join(DATA_DIR, '2kvault.db');
+// ─── Supabase Client ─────────────────────────────────────────────────────────
 
-let _db: Database.Database | null = null;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
-export function getDb(): Database.Database {
-  if (_db) return _db;
+let _client: SupabaseClient | null = null;
 
-  // Auto-create data directory
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-
-  _db = new Database(DB_PATH);
-  _db.pragma('journal_mode = WAL');
-  _db.pragma('foreign_keys = ON');
-
-  initTables(_db);
-  seedData(_db);
-
-  return _db;
+function getClient(): SupabaseClient {
+  if (_client) return _client;
+  _client = createClient(supabaseUrl, supabaseKey);
+  return _client;
 }
 
-function initTables(db: Database.Database) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS listings (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      description TEXT,
-      console TEXT NOT NULL,
-      rep_level TEXT NOT NULL,
-      rep_percent INTEGER NOT NULL DEFAULT 0,
-      price REAL NOT NULL,
-      image_urls TEXT DEFAULT '[]',
-      status TEXT NOT NULL DEFAULT 'pending',
-      seller_name TEXT NOT NULL,
-      seller_discord TEXT,
-      seller_email TEXT,
-      featured INTEGER DEFAULT 0,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
+// ─── Seed ────────────────────────────────────────────────────────────────────
 
-    CREATE TABLE IF NOT EXISTS admin_users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL
-    );
+let _seeded = false;
 
-    CREATE TABLE IF NOT EXISTS reviews (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      text TEXT NOT NULL,
-      service TEXT,
-      rating INTEGER DEFAULT 5
-    );
-  `);
-}
+async function ensureSeeded(): Promise<void> {
+  if (_seeded) return;
+  _seeded = true;
 
-function seedData(db: Database.Database) {
-  // Ensure only the owner admin account exists
-  const adminExists = db.prepare('SELECT id FROM admin_users WHERE username = ?').get('Klinti');
-  if (!adminExists) {
-    // Remove any old admin accounts and create the owner account
-    db.prepare('DELETE FROM admin_users').run();
+  const client = getClient();
+
+  // Seed admin if not exists
+  const { data: admin } = await client
+    .from('admin_users')
+    .select('id')
+    .eq('username', 'Klinti')
+    .single();
+
+  if (!admin) {
+    await client.from('admin_users').delete().neq('id', 0);
     const hash = hashSync('Klinti2011', 10);
-    db.prepare('INSERT INTO admin_users (username, password_hash) VALUES (?, ?)').run('Klinti', hash);
+    await client.from('admin_users').insert({ username: 'Klinti', password_hash: hash });
   }
 
-  // Seed sample listings if table is empty
-  const listingCount = db.prepare('SELECT COUNT(*) as count FROM listings').get() as { count: number };
-  if (listingCount.count === 0) {
-    const sampleListings = [
-      {
-        title: 'Legend 1 PS5 Account - Max Badges',
-        description: 'Fully maxed Legend 1 account with all badges unlocked. 99 overall PG/SG build with elite dribble moves. Comes with 2M VC and multiple outfits.',
-        console: 'PS5',
-        rep_level: 'Legend 1',
-        rep_percent: 100,
-        price: 299.99,
-        seller_name: 'EliteHoops',
-        seller_discord: 'EliteHoops#4521',
-        seller_email: 'elitehoops@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'Veteran 3 Xbox Build - 99 OVR Center',
-        description: 'Dominant 99 overall Center build. Veteran 3 rep with 78% completion. All defensive badges HOF. Great for Rec and Pro-Am.',
-        console: 'Xbox Series X/S',
-        rep_level: 'Veteran 3',
-        rep_percent: 78,
-        price: 149.99,
-        seller_name: 'PaintBeast',
-        seller_discord: 'PaintBeast#8833',
-        seller_email: 'paintbeast@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'All-Star 2 PS5 - Two Builds Included',
-        description: 'Two fully built 99 overall characters. PG with elite playmaking and a lockdown SF. All-Star 2 rep. 500K VC included.',
-        console: 'PS5',
-        rep_level: 'All-Star 2',
-        rep_percent: 45,
-        price: 119.99,
-        seller_name: 'CourtKing',
-        seller_discord: 'CourtKing#2210',
-        seller_email: 'courtking@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'Superstar 1 Xbox - Rare Animations',
-        description: 'Superstar 1 account with rare dribble animations and custom jumpshot. 97 overall PG. Park record 340-120. Premium wardrobes.',
-        console: 'Xbox Series X/S',
-        rep_level: 'Superstar 1',
-        rep_percent: 15,
-        price: 179.99,
-        seller_name: 'DribbleGod',
-        seller_discord: 'DribbleGod#5590',
-        seller_email: 'dribblegod@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'Legend 2 PS5 - Ultimate Package',
-        description: 'Legend 2 account with three 99 overall builds. Over 5000 park games played. Comes with 3M VC, all mascots unlocked, and full badge loadouts.',
-        console: 'PS5',
-        rep_level: 'Legend 2',
-        rep_percent: 30,
-        price: 449.99,
-        seller_name: '2KVeteran',
-        seller_discord: '2KVeteran#1100',
-        seller_email: '2kveteran@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'Veteran 1 Xbox - Budget Build',
-        description: 'Solid Veteran 1 account with a 96 overall SG. Good park record and all shooting badges maxed. Great starter account.',
-        console: 'Xbox Series X/S',
-        rep_level: 'Veteran 1',
-        rep_percent: 90,
-        price: 79.99,
-        seller_name: 'BucketGetter',
-        seller_discord: 'BucketGetter#7744',
-        seller_email: 'bucketgetter@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'Superstar 3 PS5 - Pro-Am Ready',
-        description: 'Superstar 3 with a dedicated Pro-Am team slot. 99 overall PF/C two-way build. All defensive and finishing badges on HOF.',
-        console: 'PS5',
-        rep_level: 'Superstar 3',
-        rep_percent: 60,
-        price: 219.99,
-        seller_name: 'GlassCleaner',
-        seller_discord: 'GlassCleaner#3399',
-        seller_email: 'glasscleaner@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'All-Star 3 Xbox - Sniper Build',
-        description: 'All-Star 3 rep with a deadly 98 overall shooting guard. 65% 3PT in park. All shooting badges HOF. Custom green window jumpshot.',
-        console: 'Xbox Series X/S',
-        rep_level: 'All-Star 3',
-        rep_percent: 82,
-        price: 139.99,
-        seller_name: 'SplashBro',
-        seller_discord: 'SplashBro#6611',
-        seller_email: 'splashbro@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'Veteran 2 PS5 - Comp Guard',
-        description: 'Competitive Veteran 2 guard with 70% win rate in park. 99 overall with maxed playmaking and shooting. 1.5M VC on account.',
-        console: 'PS5',
-        rep_level: 'Veteran 2',
-        rep_percent: 55,
-        price: 129.99,
-        seller_name: 'ISOKing',
-        seller_discord: 'ISOKing#9922',
-        seller_email: 'isoking@email.com',
-        status: 'sold',
-      },
-      {
-        title: 'Superstar 2 Xbox - Multiple Builds',
-        description: 'Superstar 2 account featuring four different 98+ overall builds covering all positions. Great for versatile gameplay. 800K VC included.',
-        console: 'Xbox Series X/S',
-        rep_level: 'Superstar 2',
-        rep_percent: 40,
-        price: 199.99,
-        seller_name: 'VersatilePlayer',
-        seller_discord: 'VersatilePlayer#4400',
-        seller_email: 'versatile@email.com',
-        status: 'sold',
-      },
-    ];
+  // Seed reviews if empty
+  const { count: reviewCount } = await client
+    .from('reviews')
+    .select('*', { count: 'exact', head: true });
 
-    const insertListing = db.prepare(`
-      INSERT INTO listings (id, title, description, console, rep_level, rep_percent, price, image_urls, status, seller_name, seller_discord, seller_email, featured, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertMany = db.transaction(() => {
-      for (const listing of sampleListings) {
-        const now = new Date().toISOString();
-        insertListing.run(
-          uuidv4(),
-          listing.title,
-          listing.description,
-          listing.console,
-          listing.rep_level,
-          listing.rep_percent,
-          listing.price,
-          '[]',
-          listing.status,
-          listing.seller_name,
-          listing.seller_discord,
-          listing.seller_email,
-          0,
-          now,
-          now
-        );
-      }
-    });
-    insertMany();
+  if (!reviewCount || reviewCount === 0) {
+    await client.from('reviews').insert([
+      { name: 'Marcus T.', text: 'Copped a Legend account from 2kVault and it was exactly as described. Transfer was smooth and the seller was super responsive. 10/10 would buy again.', service: 'Account Purchase', rating: 5 },
+      { name: 'DeShawn R.', text: 'Was skeptical at first but 2kVault is legit. Got my Superstar 3 account within an hour of payment. All badges were there, VC was right. No cap, best marketplace out there.', service: 'Account Purchase', rating: 5 },
+      { name: 'Tyler K.', text: 'Sold my old 2K account here after I switched to Xbox. Got a fair price and the process was easy. They handled everything professionally.', service: 'Account Sale', rating: 5 },
+      { name: 'Jordan W.', text: 'The middleman service gave me peace of mind. Bought a Veteran 2 PS5 account and the escrow system made sure both sides were protected. Great experience.', service: 'Middleman Service', rating: 5 },
+      { name: 'Chris B.', text: 'Fast delivery, account was exactly as listed. My new Legend build is insane in the park. Support team answered all my questions within minutes.', service: 'Account Purchase', rating: 5 },
+      { name: 'Aiden P.', text: 'I have bought 3 accounts from different sellers on 2kVault. Every single time it has been smooth. The verification process they use is solid. Highly recommend.', service: 'Account Purchase', rating: 5 },
+      { name: 'Jamal H.', text: 'Listed my account and it sold within 2 days. Got paid quickly through their system. Way better than trying to sell on Reddit or Discord where you might get scammed.', service: 'Account Sale', rating: 4 },
+      { name: 'Brandon L.', text: 'Good prices compared to other sites. Picked up an All-Star 3 Xbox account with a crazy sniper build. The jumpshot is butter. Only wish there were more Xbox listings.', service: 'Account Purchase', rating: 4 },
+    ]);
   }
 
-  // Seed sample reviews if table is empty
-  const reviewCount = db.prepare('SELECT COUNT(*) as count FROM reviews').get() as { count: number };
-  if (reviewCount.count === 0) {
-    const sampleReviews = [
-      {
-        name: 'Marcus T.',
-        text: 'Copped a Legend account from 2kVault and it was exactly as described. Transfer was smooth and the seller was super responsive. 10/10 would buy again.',
-        service: 'Account Purchase',
-        rating: 5,
-      },
-      {
-        name: 'DeShawn R.',
-        text: 'Was skeptical at first but 2kVault is legit. Got my Superstar 3 account within an hour of payment. All badges were there, VC was right. No cap, best marketplace out there.',
-        service: 'Account Purchase',
-        rating: 5,
-      },
-      {
-        name: 'Tyler K.',
-        text: 'Sold my old 2K account here after I switched to Xbox. Got a fair price and the process was easy. They handled everything professionally.',
-        service: 'Account Sale',
-        rating: 5,
-      },
-      {
-        name: 'Jordan W.',
-        text: 'The middleman service gave me peace of mind. Bought a Veteran 2 PS5 account and the escrow system made sure both sides were protected. Great experience.',
-        service: 'Middleman Service',
-        rating: 5,
-      },
-      {
-        name: 'Chris B.',
-        text: 'Fast delivery, account was exactly as listed. My new Legend build is insane in the park. Support team answered all my questions within minutes.',
-        service: 'Account Purchase',
-        rating: 5,
-      },
-      {
-        name: 'Aiden P.',
-        text: 'I have bought 3 accounts from different sellers on 2kVault. Every single time it has been smooth. The verification process they use is solid. Highly recommend.',
-        service: 'Account Purchase',
-        rating: 5,
-      },
-      {
-        name: 'Jamal H.',
-        text: 'Listed my account and it sold within 2 days. Got paid quickly through their system. Way better than trying to sell on Reddit or Discord where you might get scammed.',
-        service: 'Account Sale',
-        rating: 4,
-      },
-      {
-        name: 'Brandon L.',
-        text: 'Good prices compared to other sites. Picked up an All-Star 3 Xbox account with a crazy sniper build. The jumpshot is butter. Only wish there were more Xbox listings.',
-        service: 'Account Purchase',
-        rating: 4,
-      },
-    ];
+  // Seed sample sold listings if empty
+  const { count: listingCount } = await client
+    .from('listings')
+    .select('*', { count: 'exact', head: true });
 
-    const insertReview = db.prepare(
-      'INSERT INTO reviews (name, text, service, rating) VALUES (?, ?, ?, ?)'
-    );
-
-    const insertManyReviews = db.transaction(() => {
-      for (const review of sampleReviews) {
-        insertReview.run(review.name, review.text, review.service, review.rating);
-      }
-    });
-    insertManyReviews();
+  if (!listingCount || listingCount === 0) {
+    const now = new Date().toISOString();
+    const samples = [
+      { title: 'Legend 1 PS5 Account - Max Badges', description: 'Fully maxed Legend 1 account with all badges unlocked. 99 overall PG/SG build.', console: 'PS5', rep_level: 'Legend 1', rep_percent: 100, price: 299.99, seller_name: 'EliteHoops', seller_discord: 'EliteHoops#4521', seller_email: '', status: 'sold' },
+      { title: 'Veteran 3 Xbox Build - 99 OVR Center', description: 'Dominant 99 overall Center build. Veteran 3 rep. All defensive badges HOF.', console: 'Xbox Series X/S', rep_level: 'Veteran 3', rep_percent: 78, price: 149.99, seller_name: 'PaintBeast', seller_discord: 'PaintBeast#8833', seller_email: '', status: 'sold' },
+      { title: 'Legend 2 PS5 - Ultimate Package', description: 'Legend 2 account with three 99 overall builds. 5000 park games. 3M VC.', console: 'PS5', rep_level: 'Legend 2', rep_percent: 30, price: 449.99, seller_name: '2KVeteran', seller_discord: '2KVeteran#1100', seller_email: '', status: 'sold' },
+      { title: 'Veteran 1 Xbox - Budget Build', description: 'Solid Veteran 1 account with 96 overall SG. All shooting badges maxed.', console: 'Xbox Series X/S', rep_level: 'Veteran 1', rep_percent: 90, price: 79.99, seller_name: 'BucketGetter', seller_discord: 'BucketGetter#7744', seller_email: '', status: 'sold' },
+      { title: 'Veteran 2 PS5 - Comp Guard', description: 'Competitive Veteran 2 guard. 70% win rate. 99 overall maxed playmaking.', console: 'PS5', rep_level: 'Veteran 2', rep_percent: 55, price: 129.99, seller_name: 'ISOKing', seller_discord: 'ISOKing#9922', seller_email: '', status: 'sold' },
+    ].map(l => ({ ...l, id: uuidv4(), image_urls: '[]', featured: 0, created_at: now, updated_at: now }));
+    await client.from('listings').insert(samples);
   }
 }
 
-// ─── Query Functions ───────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ListingRow {
   id: string;
@@ -330,35 +108,6 @@ export interface AdminRow {
   password_hash: string;
 }
 
-export function getAllListings(status?: string, consoleFilter?: string): ListingRow[] {
-  const db = getDb();
-  let query = 'SELECT * FROM listings';
-  const conditions: string[] = [];
-  const params: string[] = [];
-
-  if (status) {
-    conditions.push('status = ?');
-    params.push(status);
-  }
-  if (consoleFilter) {
-    conditions.push('console = ?');
-    params.push(consoleFilter);
-  }
-
-  if (conditions.length > 0) {
-    query += ' WHERE ' + conditions.join(' AND ');
-  }
-
-  query += ' ORDER BY created_at DESC';
-
-  return db.prepare(query).all(...params) as ListingRow[];
-}
-
-export function getListingById(id: string): ListingRow | undefined {
-  const db = getDb();
-  return db.prepare('SELECT * FROM listings WHERE id = ?').get(id) as ListingRow | undefined;
-}
-
 export interface CreateListingData {
   title: string;
   description?: string;
@@ -372,73 +121,97 @@ export interface CreateListingData {
   seller_email?: string;
 }
 
-export function createListing(data: CreateListingData): ListingRow {
-  const db = getDb();
+// ─── Query Functions ─────────────────────────────────────────────────────────
+
+export async function getAllListings(status?: string, consoleFilter?: string): Promise<ListingRow[]> {
+  await ensureSeeded();
+  const client = getClient();
+
+  let query = client.from('listings').select('*');
+  if (status) query = query.eq('status', status);
+  if (consoleFilter) query = query.eq('console', consoleFilter);
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+  if (error) { console.error('getAllListings error:', error); return []; }
+  return (data || []) as ListingRow[];
+}
+
+export async function getListingById(id: string): Promise<ListingRow | undefined> {
+  await ensureSeeded();
+  const client = getClient();
+  const { data, error } = await client.from('listings').select('*').eq('id', id).single();
+  if (error || !data) return undefined;
+  return data as ListingRow;
+}
+
+export async function createListing(data: CreateListingData): Promise<ListingRow> {
+  await ensureSeeded();
+  const client = getClient();
   const id = uuidv4();
   const now = new Date().toISOString();
   const imageUrls = JSON.stringify(data.image_urls || []);
 
-  db.prepare(`
-    INSERT INTO listings (id, title, description, console, rep_level, rep_percent, price, image_urls, status, seller_name, seller_discord, seller_email, featured, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, 0, ?, ?)
-  `).run(
-    id,
-    data.title,
-    data.description || '',
-    data.console,
-    data.rep_level,
-    data.rep_percent,
-    data.price,
-    imageUrls,
-    data.seller_name,
-    data.seller_discord || '',
-    data.seller_email || '',
-    now,
-    now
-  );
+  const row = {
+    id, title: data.title, description: data.description || '', console: data.console,
+    rep_level: data.rep_level, rep_percent: data.rep_percent, price: data.price,
+    image_urls: imageUrls, status: 'pending', seller_name: data.seller_name,
+    seller_discord: data.seller_discord || '', seller_email: data.seller_email || '',
+    featured: 0, created_at: now, updated_at: now,
+  };
 
-  return getListingById(id) as ListingRow;
+  const { error } = await client.from('listings').insert(row);
+  if (error) console.error('createListing error:', error);
+  return row as ListingRow;
 }
 
-export function updateListing(id: string, data: Partial<ListingRow>): ListingRow | undefined {
-  const db = getDb();
-  const existing = getListingById(id);
+export async function updateListing(id: string, data: Partial<ListingRow>): Promise<ListingRow | undefined> {
+  await ensureSeeded();
+  const client = getClient();
+  const existing = await getListingById(id);
   if (!existing) return undefined;
 
   const updatable: Record<string, unknown> = { ...data };
   delete updatable.id;
   delete updatable.created_at;
-
-  // Handle image_urls if passed as array
-  if (Array.isArray(updatable.image_urls)) {
-    updatable.image_urls = JSON.stringify(updatable.image_urls);
-  }
-
+  if (Array.isArray(updatable.image_urls)) updatable.image_urls = JSON.stringify(updatable.image_urls);
   updatable.updated_at = new Date().toISOString();
 
-  const keys = Object.keys(updatable);
-  if (keys.length === 0) return existing;
-
-  const setClause = keys.map((k) => `${k} = ?`).join(', ');
-  const values = keys.map((k) => updatable[k]);
-
-  db.prepare(`UPDATE listings SET ${setClause} WHERE id = ?`).run(...values, id);
-
-  return getListingById(id);
+  const { error } = await client.from('listings').update(updatable).eq('id', id);
+  if (error) { console.error('updateListing error:', error); return existing; }
+  return await getListingById(id);
 }
 
-export function deleteListing(id: string): boolean {
-  const db = getDb();
-  const result = db.prepare('DELETE FROM listings WHERE id = ?').run(id);
-  return result.changes > 0;
+export async function deleteListing(id: string): Promise<boolean> {
+  await ensureSeeded();
+  const client = getClient();
+  const { error } = await client.from('listings').delete().eq('id', id);
+  if (error) { console.error('deleteListing error:', error); return false; }
+  return true;
 }
 
-export function getReviews(): ReviewRow[] {
-  const db = getDb();
-  return db.prepare('SELECT * FROM reviews ORDER BY id DESC').all() as ReviewRow[];
+export async function getReviews(): Promise<ReviewRow[]> {
+  await ensureSeeded();
+  const client = getClient();
+  const { data, error } = await client.from('reviews').select('*').order('id', { ascending: false });
+  if (error) { console.error('getReviews error:', error); return []; }
+  return (data || []) as ReviewRow[];
 }
 
-export function getAdminByUsername(username: string): AdminRow | undefined {
-  const db = getDb();
-  return db.prepare('SELECT * FROM admin_users WHERE username = ?').get(username) as AdminRow | undefined;
+export async function getAdminByUsername(username: string): Promise<AdminRow | undefined> {
+  await ensureSeeded();
+  const client = getClient();
+  const { data, error } = await client.from('admin_users').select('*').eq('username', username).single();
+  if (error || !data) return undefined;
+  return data as AdminRow;
+}
+
+// ─── Image Upload via Supabase Storage ───────────────────────────────────────
+
+export async function uploadImage(file: Buffer, filename: string, contentType: string): Promise<string> {
+  const client = getClient();
+  const { error } = await client.storage.from('uploads').upload(filename, file, { contentType, upsert: true });
+  if (error) { console.error('uploadImage error:', error); throw new Error('Failed to upload image'); }
+  const { data: urlData } = client.storage.from('uploads').getPublicUrl(filename);
+  return urlData.publicUrl;
 }

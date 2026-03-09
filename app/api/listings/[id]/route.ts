@@ -35,7 +35,7 @@ export async function GET(
 ) {
   try {
     const { id } = params;
-    const listing = getListingById(id);
+    const listing = await getListingById(id);
 
     if (!listing) {
       return NextResponse.json(
@@ -78,7 +78,7 @@ export async function PUT(
     const { id } = params;
     const body = await request.json();
 
-    const updated = updateListing(id, body);
+    const updated = await updateListing(id, body);
     if (!updated) {
       return NextResponse.json(
         { error: 'Listing not found' },
@@ -118,7 +118,7 @@ export async function DELETE(
     }
 
     const { id } = params;
-    const deleted = deleteListing(id);
+    const deleted = await deleteListing(id);
 
     if (!deleted) {
       return NextResponse.json(

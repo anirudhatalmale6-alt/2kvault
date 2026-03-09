@@ -17,7 +17,7 @@ export async function OPTIONS() {
  */
 export async function GET() {
   try {
-    const reviews = getReviews();
+    const reviews = await getReviews();
     return NextResponse.json(reviews, { headers: corsHeaders });
   } catch (error) {
     console.error('GET /api/reviews error:', error);
