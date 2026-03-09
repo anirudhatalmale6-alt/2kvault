@@ -285,9 +285,9 @@ const COVERS = [
 ];
 
 const PRICING_EXAMPLES = [
-  { trade: "$100 trade", fee: "$8", result: "$15 min" },
-  { trade: "$200 trade", fee: "$16", result: "$16" },
-  { trade: "$500 trade", fee: "$40", result: "$40" },
+  { trade: "$100 trade", fee: "$3", result: "$15 min" },
+  { trade: "$200 trade", fee: "$6", result: "$15 min" },
+  { trade: "$500 trade", fee: "$15", result: "$15" },
 ];
 
 const TRUST_ITEMS = [
@@ -509,7 +509,7 @@ export default function MiddlemanPage() {
               </div>
 
               <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-text-primary mb-3">
-                <span className="text-gradient-green">8%</span>{" "}
+                <span className="text-gradient-green">3%</span>{" "}
                 <span className="text-text-primary">Flat Fee</span>
               </h2>
               <p className="text-text-secondary text-base sm:text-lg mb-8">
@@ -521,7 +521,7 @@ export default function MiddlemanPage() {
                 {/* Header */}
                 <div className="grid grid-cols-3 gap-4 text-xs font-semibold text-text-muted uppercase tracking-wider pb-2 border-b border-vault-border">
                   <span>Trade Value</span>
-                  <span>8% Fee</span>
+                  <span>3% Fee</span>
                   <span>You Pay</span>
                 </div>
 

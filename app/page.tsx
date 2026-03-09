@@ -251,7 +251,7 @@ export default function Home() {
             className="reveal-item inline-flex items-center gap-2 px-4 py-1.5 mb-8 rounded-full border border-gold/20 bg-gold/[0.06] text-gold text-sm font-medium"
           >
             <StarIcon className="w-4 h-4 text-gold" />
-            <span>Trusted by Thousands of 2K Players</span>
+            <span>Trusted by Hundreds of 2K Players</span>
           </div>
 
           {/* Headline */}
@@ -498,7 +498,7 @@ export default function Home() {
                   "Escrow protection for buyers & sellers",
                   "Verified trusted middlemen",
                   "Payment method conversions",
-                  "8% flat fee (min $15)",
+                  "3% flat fee (min $15)",
                   "Full chat support throughout",
                 ].map((item) => (
                   <li key={item} className="flex items-start gap-2.5 text-sm text-text-secondary">
